@@ -72,18 +72,19 @@ fun loadImg(incorrects: MutableState<Int>, modifier: Modifier) {
 @Composable
 fun zeGame() {
     val configuration = LocalConfiguration.current
-    var lettersPicked = rememberSaveable { mutableStateOf(mutableSetOf<Char>()) }
+    var lettersPicked = rememberSaveable { mutableStateOf(mutableSetOf<Char>()) } // Use MutableState<MutableSet<Char>>
     var incorrects = rememberSaveable { mutableIntStateOf(0) }
     var hintState = rememberSaveable { mutableIntStateOf(0) }
     var hintText = rememberSaveable { mutableStateOf(false) }
     var word = rememberSaveable { mutableStateOf("ability") }
+    var resetTriggered by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         when (configuration.orientation) {
             Configuration.ORIENTATION_LANDSCAPE -> {
                 Row(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.weight(0.4f)) {
-                        LetterButtons(lettersPicked, word, incorrects, hintState, hintText, modifier = Modifier.weight(0.3f))
+                        LetterButtons(lettersPicked, word, incorrects, hintState, hintText, resetTriggered, modifier = Modifier.weight(0.3f))
                         HintContent(hintState, hintText, incorrects, word.value, lettersPicked)
                     }
                     Box(modifier = Modifier.weight(0.6f)) {
@@ -95,12 +96,16 @@ fun zeGame() {
                 Box(modifier = Modifier.weight(0.6f)) {
                     GamePlayScreen(word, lettersPicked, incorrects)
                 }
-                LetterButtons(lettersPicked, word, incorrects, hintState, hintText, modifier = Modifier.weight(0.3f))
+                LetterButtons(lettersPicked, word, incorrects, hintState, hintText, resetTriggered, modifier = Modifier.weight(0.3f))
             }
         }
 
         Button(
-            onClick = { rest(lettersPicked, incorrects, hintState, hintText, word) },
+            onClick = {
+                rest(lettersPicked, incorrects, hintState, hintText, word)
+                resetTriggered = true  // Trigger recomposition
+                resetTriggered = false // Reset immediately after triggering
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -118,6 +123,7 @@ fun LetterButtons(
     incorrects: MutableIntState,
     hintState: MutableIntState,
     hintText: MutableState<Boolean>,
+    resetTriggered: Boolean,
     modifier: Modifier
 ) {
     val alphabet = ('a'..'z').toList()
@@ -127,14 +133,13 @@ fun LetterButtons(
     var gameLose by remember { mutableStateOf(false) }
     val snackBarHostState = remember { SnackbarHostState() }
     var snackMessage by remember { mutableStateOf("") }
-    var resetTriggered by remember { mutableStateOf(false) } // Add resetTriggered flag
 
     Column {
         FlowRow {
             alphabet.forEach { letter ->
                 Button(
                     onClick = {
-                        lettersPicked.value = lettersPicked.value.toMutableSet().apply { add(letter) }
+                        lettersPicked.value = lettersPicked.value.toMutableSet().apply { add(letter) } // Create a new MutableSet
                         if (!word.value.contains(letter)) {
                             correctness = true
                             incorrects.intValue++
@@ -162,7 +167,6 @@ fun LetterButtons(
                                         rest(lettersPicked, incorrects, hintState, hintText, word)
                                         gameWin = false
                                         gameLose = false
-                                        resetTriggered = !resetTriggered // Trigger recomposition
                                     }
                                 }
                                 SnackbarResult.Dismissed -> {
@@ -171,29 +175,18 @@ fun LetterButtons(
                                         rest(lettersPicked, incorrects, hintState, hintText, word)
                                         gameWin = false
                                         gameLose = false
-                                        resetTriggered = !resetTriggered // Trigger recomposition
                                     }
                                 }
                             }
                         }
                     },
-                    enabled = !lettersPicked.value.contains(letter) && !resetTriggered // Add resetTriggered condition
+                    enabled = !lettersPicked.value.contains(letter) && !resetTriggered
                 ) {
                     Text(text = letter.toString())
                 }
             }
         }
         SnackbarHost(hostState = snackBarHostState)
-    }
-
-    // LaunchedEffect for Snackbar
-    LaunchedEffect(key1 = snackBarHostState.currentSnackbarData) {
-        if (snackBarHostState.currentSnackbarData != null) {
-            // Snackbar is shown
-        } else {
-            // Snackbar is dismissed
-            resetTriggered = false // Reset the flag
-        }
     }
 }
 
@@ -284,15 +277,15 @@ fun rest(
     hintState: MutableIntState,
     hintText: MutableState<Boolean>,
     word: MutableState<String>
-){
-    lettersPicked.value.clear()
+) {
+    lettersPicked.value = mutableSetOf() // Assign a new empty MutableSet
     incorrects.intValue = 0
     hintState.intValue = 0
     hintText.value = false
     word.value = shuffledWords()
 }
 
-fun shuffledWords():String {
+fun shuffledWords(): String {
     val words = listOf(
         "ability",
         "absence",
