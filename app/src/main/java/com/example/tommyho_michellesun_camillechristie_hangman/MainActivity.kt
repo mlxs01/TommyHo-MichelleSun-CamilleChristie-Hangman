@@ -92,7 +92,7 @@ fun zeGame() {
                     }
                 }
             }
-            else -> {
+            Configuration.ORIENTATION_PORTRAIT -> {
                 Box(modifier = Modifier.weight(0.6f)) {
                     GamePlayScreen(word, lettersPicked, incorrects)
                 }
@@ -206,7 +206,7 @@ fun GamePlayScreen(
                 }
             }
         }
-        Text(text = "Incorrect Guesses: ${incorrects.intValue}")
+        Text(text = "Incorrect Quesses: ${incorrects.intValue}")
     }
 }
 
